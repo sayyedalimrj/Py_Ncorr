@@ -1,0 +1,25 @@
+Metadata-Version: 2.4
+Name: ncorr_python_webapp
+Version: 0.1.0
+Summary: Python + C++ port of Ncorr 2-D DIC with web front-end
+Requires-Python: >=3.9
+Requires-Dist: numpy<2,>=1.26
+Requires-Dist: scipy<2,>=1.11
+Requires-Dist: opencv-python<5,>=4.10
+Requires-Dist: Pillow<11,>=10
+Requires-Dist: pybind11<3,>=2.12
+Requires-Dist: Flask<4,>=3.0
+Requires-Dist: Flask-RESTful<0.4,>=0.3.10
+Requires-Dist: gunicorn<22,>=21.2
+Requires-Dist: celery<6,>=5.4
+Requires-Dist: redis<6,>=5.0
+Requires-Dist: PyYAML<7,>=6.0
+Requires-Dist: tqdm<5,>=4.66
+Requires-Dist: matplotlib<4,>=3.9
+Requires-Dist: imageio<3,>=2.34
+Requires-Dist: pytest<9,>=8.0
+Requires-Dist: Werkzeug<4,>=3.0
+Requires-Dist: Jinja2<4,>=3.1
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

@@ -1,0 +1,30 @@
+.uploader {
+  display: flex;
+  gap: 1rem;
+}
+.dropzone {
+  flex: 1;
+  padding: 1rem;
+  border: 2px dashed #aaa;
+  text-align: center;
+  cursor: pointer;
+}
+.thumb {
+  max-width: 100%;
+  max-height: 200px;
+}
+.thumb.small {
+  max-height: 80px;
+  margin: 2px;
+}
+.image-display {
+  display: flex;
+  gap: 2rem;
+}
+.main-img {
+  max-width: 100%;
+  max-height: 400px;
+}
+.nav-controls button {
+  margin: 0 5px;
+}

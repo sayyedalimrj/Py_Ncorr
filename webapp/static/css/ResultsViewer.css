@@ -1,0 +1,33 @@
+.results-wrapper {
+  display: flex;
+  gap: 1rem;
+}
+.results-controls {
+  width: 220px;
+  font-size: 0.9rem;
+}
+.results-controls label {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.4rem;
+}
+.zoom-wrapper {
+  position: relative;
+  width: 100%;
+  border: 1px solid #ccc;
+}
+.heatmap-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none; /* let zoom / pan handle events */
+}
+.tooltip {
+  position: absolute;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 11px;
+  pointer-events: none;
+  border-radius: 3px;
+}

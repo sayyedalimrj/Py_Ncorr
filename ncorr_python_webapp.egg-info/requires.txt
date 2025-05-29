@@ -1,0 +1,17 @@
+numpy<2,>=1.26
+scipy<2,>=1.11
+opencv-python<5,>=4.10
+Pillow<11,>=10
+pybind11<3,>=2.12
+Flask<4,>=3.0
+Flask-RESTful<0.4,>=0.3.10
+gunicorn<22,>=21.2
+celery<6,>=5.4
+redis<6,>=5.0
+PyYAML<7,>=6.0
+tqdm<5,>=4.66
+matplotlib<4,>=3.9
+imageio<3,>=2.34
+pytest<9,>=8.0
+Werkzeug<4,>=3.0
+Jinja2<4,>=3.1

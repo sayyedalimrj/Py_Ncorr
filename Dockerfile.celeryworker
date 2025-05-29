@@ -1,0 +1,5 @@
+# Build from the **runtime stage** above to avoid duplicate work
+FROM ncorr_python_webapp:latest AS base
+
+# Celery entry-point
+CMD ["celery", "-A", "webapp.tasks.dic_tasks.celery_app", "worker", "-l", "info", "--concurrency=4"]

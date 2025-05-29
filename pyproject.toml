@@ -1,0 +1,72 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  pyproject.toml  –  top-level build / metadata definition
+# ─────────────────────────────────────────────────────────────────────────────
+
+[project]
+name            = "ncorr_python_webapp"
+version         = "0.1.0"
+description     = "Python + C++ port of Ncorr 2-D Digital Image Correlation with a web front-end"
+readme          = "README.md"
+requires-python = ">=3.9"
+
+authors = [
+  { name = "Ali", email = "ali@example.com" }
+]
+
+license = { text = "MIT" }
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: C++",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+#  ── Runtime Python-level requirements (everything **except** the C++ libs) ──
+dependencies = [
+  "numpy>=1.26,<2",
+  "scipy>=1.11,<2",
+  "opencv-python>=4.10,<5",
+  "Pillow>=10,<11",
+  "pybind11>=2.12,<3",
+  "Flask>=3.0,<4",
+  "Flask-RESTful>=0.3.10,<0.4",
+  "gunicorn>=21.2,<22",
+  "celery>=5.4,<6",
+  "redis>=5.0,<6",
+  "PyYAML>=6,<7",
+  "tqdm>=4.66,<5",
+  "matplotlib>=3.9,<4",
+  "imageio>=2.34,<3",
+  "pytest>=8,<9",
+  "Werkzeug>=3,<4",
+  "Jinja2>=3.1,<4"
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Build back-end – still driven by setup.py / setuptools.  The extra
+#  PyPI wheels here let us compile the C++ extensions in an isolated env.
+# ─────────────────────────────────────────────────────────────────────────────
+[build-system]
+requires = [
+  "setuptools>=64",
+  "wheel",
+  "numpy==1.26.*",   # guarantee headers are present at build-time
+  "pybind11>=2.12"   # header-only – needed for the C++ bindings
+]
+build-backend = "setuptools.build_meta"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Optional: declarative bits for setuptools so that `pip` editable installs
+#  find all Python packages & data even though extensions are built in
+#  setup.py.  These do **not** interfere with setup.py’s custom logic.
+# ─────────────────────────────────────────────────────────────────────────────
+[tool.setuptools]
+package-dir = { "" = "." }
+
+[tool.setuptools.packages.find]
+where    = ["."]
+exclude  = ["tests*", "examples*"]
+
+[tool.setuptools.package-data]
+"ncorr_app" = ["_ext/*.pyd", "_ext/*.so"]

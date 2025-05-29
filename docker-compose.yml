@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app
+    restart: unless-stopped
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./results:/opt/ncorr_app/results         # persistent output
+      - ./webapp/static:/usr/share/nginx/html/static:ro
+    expose:
+      - "8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.celeryworker
+    depends_on:
+      - redis
+    restart: unless-stopped
+    volumes:
+      - ./results:/opt/ncorr_app/results
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: nginx
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./config_files/nginx_ncorr.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./webapp/static:/usr/share/nginx/html/static:ro
+
+volumes:
+  redis-data:
