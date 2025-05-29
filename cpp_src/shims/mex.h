@@ -1,58 +1,79 @@
-/*─────────────────────────────────────────────────────────────────────────────
-  mex.h  –  tiny stand-in so legacy Ncorr C++ code that expected the
-            MATLAB MEX API will compile *without* MATLAB.
-
-  Only the handful of symbols referenced inside the Ncorr sources are
-  declared.  They do **nothing** at run-time, they merely satisfy the linker.
- ────────────────────────────────────────────────────────────────────────────*/
+// ──────────────────────────────────────────────────────────────────────────────
+//  cpp_src/shims/mex.h
+//
+//  Tiny “dummy” replacement for MATLAB’s <mex.h>.
+//  Supplies just enough typedefs, enums and functions so that the
+//  original Ncorr C++ code will compile without MATLAB.
+//
+//  NOTE: **Nothing here actually calls MATLAB** – every API routine
+//        either does nothing, returns a default value, or throws a
+//        C++ exception (so that logic errors are still caught).
+//
+//  Last updated: 2025-05-29
+// ──────────────────────────────────────────────────────────────────────────────
 #ifndef NCORR_DUMMY_MEX_H
 #define NCORR_DUMMY_MEX_H
 
-#include <cstddef>      // size_t
-#include <cstdint>      // ptrdiff_t
-#include <cstdio>       // vfprintf / stderr
-#include <cstdarg>      // va_list
-#include <stdexcept>    // std::runtime_error
+// standard C / C++
+#include <cstddef>      // std::size_t
+#include <cstdint>
+#include <cstdio>
+#include <cstdarg> 
+#include <cstdlib>
+#include <stdexcept>
 
-/* ───── basic MATLAB typedefs (opaque) ──────────────────────────────────── */
+// ───── Fundamental MATLAB types (minimal) ────────────────────────────────────
 using mwSize  = std::size_t;
 using mwIndex = std::ptrdiff_t;
 
-struct mxArray          { void *data {}; };        // completely opaque
-struct mxLogical        { };
-constexpr int mxREAL = 0;                          // value is irrelevant
+// Bare-bones stand-in for MATLAB’s mxArray.
+struct mxArray {};
 
-/* ───── dummy creators – return new, empty mxArray so pointer tests pass – */
-inline mxArray *mxCreateDoubleMatrix(mwSize, mwSize, int) { return new mxArray; }
-inline mxArray *mxCreateLogicalMatrix(mwSize, mwSize)     { return new mxArray; }
-inline mxArray *mxCreateString        (const char*)       { return new mxArray; }
+// “Class” IDs – we only need the ones referenced in Ncorr.
+enum mxClassID : int {
+    mxDOUBLE_CLASS = 6,
+    mxINT32_CLASS  = 13,
+    mxUINT8_CLASS  = 2,
+    mxLOGICAL_CLASS = 1
+};
 
-/* ───── dummy getters – always return nullptr/0 ─────────────────────────── */
-inline double *mxGetPr      (const mxArray*) { return nullptr; }
-inline mxLogical *mxGetLogicals(const mxArray*) { return nullptr; }
-inline mwSize mxGetM        (const mxArray*) { return 0; }
-inline mwSize mxGetN        (const mxArray*) { return 0; }
+// ───── Dummy creators – always return nullptr ───────────────────────────────
+inline mxArray* mxCreateDoubleMatrix(mwSize, mwSize, int)           { return nullptr; }
+inline mxArray* mxCreateLogicalMatrix(mwSize, mwSize)               { return nullptr; }
+inline mxArray* mxCreateString(const char*)                         { return nullptr; }
 
-/* properties / fields – nullptr so code that checks for null will fail safely */
-inline mxArray *mxGetProperty(const mxArray*, mwIndex, const char*) { return nullptr; }
-inline mxArray *mxGetField   (const mxArray*, mwIndex, const char*) { return nullptr; }
+// ───── Access helpers – return safe defaults ────────────────────────────────
+inline double*   mxGetPr(const mxArray*)              { return nullptr; }
+inline bool*     mxGetLogicals(const mxArray*)        { return nullptr; }
+inline mwSize    mxGetM(const mxArray*)               { return 0; }
+inline mwSize    mxGetN(const mxArray*)               { return 0; }
+inline mxArray*  mxGetField(const mxArray*, mwIndex, const char*)   { return nullptr; }
+inline mxArray*  mxGetProperty(const mxArray*, mwIndex, const char*){ return nullptr; }
 
-/* ───── destruction – we delete the dummy object ───────────────────────── */
-inline void mxDestroyArray(mxArray *p) { delete p; }
+// ───── Type checks (all return false in stub) ───────────────────────────────
+inline bool mxIsClass (const mxArray*, const char*)   { return false; }
+inline bool mxIsDouble(const mxArray*)                { return false; }
+inline bool mxIsLogical(const mxArray*)               { return false; }
 
-/* ───── MEX gateway helpers – all no-ops that pretend success ──────────── */
+// ───── Memory management – no-ops here ───────────────────────────────────────
+inline void mxDestroyArray(mxArray*)                  {}
+inline void mxFree(void*)                             {}
+
+// ───── MATLAB engine interaction – dummies/throwers ─────────────────────────
 inline int  mexCallMATLAB(int, mxArray**, int, mxArray**, const char*)
-{ return 0; }                                      // pretend “OK”
+{ return 0; }   // pretend success
 
+// Simple printf pass-through so the library’s verbose prints still show.
 inline int mexPrintf(const char* fmt, ...)
 {
-    if (!fmt) return 0;
-    va_list ap; va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-    return 0;
+    va_list args;
+    va_start(args, fmt);
+    int n = std::vfprintf(stderr, fmt, args);
+    va_end(args);
+    return n;
 }
 
+// Error handler – raise C++ exception instead of killing the process.
 [[noreturn]] inline void mexErrMsgTxt(const char* msg)
 {
     throw std::runtime_error(msg ? msg : "mexErrMsgTxt called");
