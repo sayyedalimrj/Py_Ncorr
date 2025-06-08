@@ -11,6 +11,7 @@ from typing import List
 __all__ = [
     "OutputState",
     "RegionData",
+    "BORDER_INTERP_DEFAULT",
 ]
 
 
@@ -48,3 +49,12 @@ class RegionData:
 
 # Handy container types
 RegionList = List[RegionData]
+
+# ---------------------------------------------------------------------------
+# Default settings
+# ---------------------------------------------------------------------------
+# Padding (in pixels) used by the C++ interpolators when no explicit value is
+# provided.  Mirror-padding by 20 pixels matches the behaviour of the original
+# MATLAB implementation and the default used by :class:`NcorrImage`.
+BORDER_INTERP_DEFAULT: int = 20
+
