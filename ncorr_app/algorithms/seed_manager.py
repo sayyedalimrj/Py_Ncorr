@@ -15,8 +15,12 @@ import numpy as np
 
 from ncorr_app.core import datatypes, utils
 
-_ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
-_calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+try:
+    _ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+    _calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+except ModuleNotFoundError:  # pragma: no cover - allow import w/o C++ ext
+    _ccore = None
+    _calgs = None
 
 # --------------------------------------------------------------------------- #
 #  Public helpers                                                             #

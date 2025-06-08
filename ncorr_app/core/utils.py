@@ -19,8 +19,12 @@ import scipy.fft as _fft
 # C++ extensions – import lazily to reduce import-time cost
 from importlib import import_module as _imp_mod
 
-_ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
-_calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+try:
+    _ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+    _calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+except ModuleNotFoundError:  # pragma: no cover - allow pure Python usage
+    _ccore = None
+    _calgs = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

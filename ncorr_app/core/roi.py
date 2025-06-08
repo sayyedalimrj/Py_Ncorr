@@ -18,8 +18,12 @@ from ncorr_app.core.utils import (
     _numpy_to_cpp_double_array,
 )
 
-_ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
-_calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+try:
+    _ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+    _calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+except ModuleNotFoundError:  # pragma: no cover - optional C++ extension
+    _ccore = None
+    _calgs = None
 
 
 class RegionData:  # lightweight Python proxy of CppNcorrClassRegion

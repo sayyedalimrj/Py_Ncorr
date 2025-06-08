@@ -11,6 +11,7 @@ from typing import List
 __all__ = [
     "OutputState",
     "RegionData",
+    "BORDER_INTERP_DEFAULT",
 ]
 
 
@@ -48,3 +49,7 @@ class RegionData:
 
 # Handy container types
 RegionList = List[RegionData]
+
+# Default border handling for interpolation routines. Matches the MATLAB
+# implementation where `3` corresponds to mirror-padding.
+BORDER_INTERP_DEFAULT: int = 3

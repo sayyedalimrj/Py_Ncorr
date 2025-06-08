@@ -25,19 +25,22 @@ GRAD_NORM_CUTOFF_CONVERT_SEEDS = 1.0e-5
 MAX_ITER_CONVERT_SEEDS = 10
 
 # C++ helpers
-_ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+try:
+    _ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+except ModuleNotFoundError:  # pragma: no cover
+    _ccore = None
 
 # --------------------------------------------------------------------- #
 # util: interpolation with gradients (fallback finite-diff if C++ lacks)
 # --------------------------------------------------------------------- #
-if hasattr(_ccore, "interp_qbs_with_gradients"):
+if _ccore and hasattr(_ccore, "interp_qbs_with_gradients"):
 
     def _interp_val_grad(x, y, bcoef_cpp, mask_cpp, off_x, off_y, border):
         return _ccore.interp_qbs_with_gradients(
             x, y, bcoef_cpp, mask_cpp, off_x, off_y, border
         )
 
-else:
+elif _ccore:
 
     def _interp_val_grad(x, y, bcoef_cpp, mask_cpp, off_x, off_y, border):
         eps = 1e-3
@@ -57,6 +60,10 @@ else:
         d_dx = (val_x_plus - val_x_minus) / (2 * eps)
         d_dy = (val_y_plus - val_y_minus) / (2 * eps)
         return val, d_dx, d_dy
+else:
+
+    def _interp_val_grad(x, y, bcoef_cpp, mask_cpp, off_x, off_y, border):
+        raise RuntimeError("C++ core module not available")
 
 
 # --------------------------------------------------------------------- #
@@ -205,4 +212,14 @@ def _determine_convert_seeds_py(
             )
 
     return convert_seed_info
+
+
+def format_displacement_fields(*_args, **_kwargs):
+    """Placeholder for displacement formatting."""
+    raise NotImplementedError
+
+
+def calculate_strain_fields(*_args, **_kwargs):
+    """Placeholder for strain calculation."""
+    raise NotImplementedError
 
