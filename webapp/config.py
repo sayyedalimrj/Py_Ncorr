@@ -14,7 +14,12 @@ _RESULTS_DIR = _BASE_DIR / "results"
 _RESULTS_DIR.mkdir(exist_ok=True)
 
 class Config:  # pylint: disable=too-few-public-methods
-    SECRET_KEY = os.getenv("NCORR_SECRET_KEY", "CHANGE-ME")
+    _secret = os.getenv("NCORR_SECRET_KEY")
+    if not _secret:
+        raise RuntimeError(
+            "NCORR_SECRET_KEY environment variable must be set for security"
+        )
+    SECRET_KEY = _secret
     JSON_SORT_KEYS = False
 
     # Celery / Redis
