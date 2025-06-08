@@ -11,7 +11,11 @@ from typing import List
 __all__ = [
     "OutputState",
     "RegionData",
+    "BORDER_INTERP_DEFAULT",
 ]
+
+# Default padding used when interpolating along ROI boundaries.
+BORDER_INTERP_DEFAULT = 20
 
 
 class OutputState(enum.IntEnum):
