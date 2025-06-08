@@ -14,9 +14,14 @@ from typing import Iterable, Sequence
 import numpy as np
 
 from ncorr_app.core import datatypes, utils
+from . import CPP_LOCK
 
-_ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
-_calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+try:
+    _ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+    _calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+except ModuleNotFoundError:  # pragma: no cover - allow import w/o C++ ext
+    _ccore = None
+    _calgs = None
 
 # --------------------------------------------------------------------------- #
 #  Public helpers                                                             #
@@ -94,8 +99,14 @@ def _determine_initial_seeds_and_diagram(ref_roi,
     dummy_img.type = "dummy"
 
     # heavy kernel
-    _calgs.form_threaddiagram(diag_cpp, prev_cpp,
-                              generators_cpp, cpp_mask_red, dummy_img)
+    with CPP_LOCK:
+        _calgs.form_threaddiagram(
+            diag_cpp,
+            prev_cpp,
+            generators_cpp,
+            cpp_mask_red,
+            dummy_img,
+        )
 
     diag_np = utils._cpp_double_array_to_numpy(diag_cpp).astype(np.int32)
 
@@ -168,16 +179,19 @@ def calculate_all_seeds(ref_img,
     subset_trunc = dic_params.get("subset_trunc", False)
 
     # Heavy compute ------------------------------------------------------- #
-    seed_info_cpp, conv_cpp, out_status = _calgs.calc_seeds(
-        ref_cpp, cur_cpp, roi_cpp,
-        0,                 # num_region (unused – handled internal)
-        pos_seed_cpp,
-        radius,
-        diffnorm_cut,
-        iter_cut,
-        step_enabled,
-        subset_trunc
-    )
+    with CPP_LOCK:
+        seed_info_cpp, conv_cpp, out_status = _calgs.calc_seeds(
+            ref_cpp,
+            cur_cpp,
+            roi_cpp,
+            0,  # num_region (unused – handled internal)
+            pos_seed_cpp,
+            radius,
+            diffnorm_cut,
+            iter_cut,
+            step_enabled,
+            subset_trunc,
+        )
 
     # Parse results ------------------------------------------------------- #
     seedinfo_py = [{"x": s.x, "y": s.y, "u": s.u, "v": s.v}

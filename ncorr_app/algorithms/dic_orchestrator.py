@@ -8,13 +8,15 @@ from __future__ import annotations
 from importlib import import_module as _imp_mod
 from typing import List, Sequence
 
-import numpy as np
+from ncorr_app.core import NcorrImage, NcorrROI, datatypes, utils
+from . import seed_manager, CPP_LOCK
 
-from ncorr_app.core import NcorrImage, NcorrROI, datatypes
-from . import seed_manager
-
-_ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
-_calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+try:
+    _ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+    _calgs = _imp_mod("ncorr_app._ext._ncorr_cpp_algs")
+except ModuleNotFoundError:  # pragma: no cover
+    _ccore = None
+    _calgs = None
 
 
 # --------------------------------------------------------------------------- #
@@ -27,14 +29,15 @@ def _run_rg_dic(ref_img: NcorrImage,
     """
     Thin wrapper around the `rg_dic` C++ kernel.
     """
-    u_cpp, v_cpp, cc_cpp, vp_cpp, status = _calgs.rg_dic(
-        ref_img.to_cpp_repr(),
-        cur_img.to_cpp_repr(),
-        roi.to_cpp_repr(),
-        subset_trunc,
-        border,
-        spacing
-    )
+    with CPP_LOCK:
+        u_cpp, v_cpp, cc_cpp, vp_cpp, status = _calgs.rg_dic(
+            ref_img.to_cpp_repr(),
+            cur_img.to_cpp_repr(),
+            roi.to_cpp_repr(),
+            subset_trunc,
+            border,
+            spacing,
+        )
 
     result = {
         "u": utils._cpp_double_array_to_numpy(u_cpp),
@@ -122,7 +125,6 @@ def orchestrate_dic_analysis(ref_img: NcorrImage,
         disp_results[idx] = dic_out
 
         # ------------------------------------------------ ROI update / union (simplified)
-        vp_mask = dic_out["validpoints"]
         # Keep same ROI for this minimal implementation
         final_rois[idx] = step_ref_roi
 

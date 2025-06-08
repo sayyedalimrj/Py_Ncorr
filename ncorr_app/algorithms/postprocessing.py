@@ -18,6 +18,7 @@ from ncorr_app.core.datatypes import (
     BORDER_INTERP_DEFAULT,
     OutputState,
 )
+from . import CPP_LOCK
 
 # Cut-offs for convert-seed search
 DISTANCE_CUTOFF_CONVERT_SEEDS = 5.0e-3
@@ -25,38 +26,55 @@ GRAD_NORM_CUTOFF_CONVERT_SEEDS = 1.0e-5
 MAX_ITER_CONVERT_SEEDS = 10
 
 # C++ helpers
-_ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+try:
+    _ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+except ModuleNotFoundError:  # pragma: no cover
+    _ccore = None
 
 # --------------------------------------------------------------------- #
 # util: interpolation with gradients (fallback finite-diff if C++ lacks)
 # --------------------------------------------------------------------- #
-if hasattr(_ccore, "interp_qbs_with_gradients"):
+if _ccore and hasattr(_ccore, "interp_qbs_with_gradients"):
 
     def _interp_val_grad(x, y, bcoef_cpp, mask_cpp, off_x, off_y, border):
-        return _ccore.interp_qbs_with_gradients(
-            x, y, bcoef_cpp, mask_cpp, off_x, off_y, border
-        )
+        with CPP_LOCK:
+            return _ccore.interp_qbs_with_gradients(
+                x,
+                y,
+                bcoef_cpp,
+                mask_cpp,
+                off_x,
+                off_y,
+                border,
+            )
 
-else:
+elif _ccore:
 
     def _interp_val_grad(x, y, bcoef_cpp, mask_cpp, off_x, off_y, border):
         eps = 1e-3
-        val = _ccore.interp_qbs(x, y, bcoef_cpp, mask_cpp, off_x, off_y, border)[0]
-        val_x_plus = _ccore.interp_qbs(
-            x + eps, y, bcoef_cpp, mask_cpp, off_x, off_y, border
-        )[0]
-        val_x_minus = _ccore.interp_qbs(
-            x - eps, y, bcoef_cpp, mask_cpp, off_x, off_y, border
-        )[0]
-        val_y_plus = _ccore.interp_qbs(
-            x, y + eps, bcoef_cpp, mask_cpp, off_x, off_y, border
-        )[0]
-        val_y_minus = _ccore.interp_qbs(
-            x, y - eps, bcoef_cpp, mask_cpp, off_x, off_y, border
-        )[0]
+        with CPP_LOCK:
+            val = _ccore.interp_qbs(
+                x, y, bcoef_cpp, mask_cpp, off_x, off_y, border
+            )[0]
+            val_x_plus = _ccore.interp_qbs(
+                x + eps, y, bcoef_cpp, mask_cpp, off_x, off_y, border
+            )[0]
+            val_x_minus = _ccore.interp_qbs(
+                x - eps, y, bcoef_cpp, mask_cpp, off_x, off_y, border
+            )[0]
+            val_y_plus = _ccore.interp_qbs(
+                x, y + eps, bcoef_cpp, mask_cpp, off_x, off_y, border
+            )[0]
+            val_y_minus = _ccore.interp_qbs(
+                x, y - eps, bcoef_cpp, mask_cpp, off_x, off_y, border
+            )[0]
         d_dx = (val_x_plus - val_x_minus) / (2 * eps)
         d_dy = (val_y_plus - val_y_minus) / (2 * eps)
         return val, d_dx, d_dy
+else:
+
+    def _interp_val_grad(x, y, bcoef_cpp, mask_cpp, off_x, off_y, border):
+        raise RuntimeError("C++ core module not available")
 
 
 # --------------------------------------------------------------------- #
@@ -92,38 +110,46 @@ def _determine_convert_seeds_py(
     convert_seed_info = []
 
     ys_new, xs_new = np.nonzero(new_mask)
-    for y_new_r, x_new_r in zip(ys_new, xs_new):
-        if (
-            y_new_r < seed_window_half_width
-            or y_new_r >= h_r - seed_window_half_width
-            or x_new_r < seed_window_half_width
-            or x_new_r >= w_r - seed_window_half_width
-        ):
-            continue
+    valid_new = (
+        (ys_new >= seed_window_half_width)
+        & (ys_new < h_r - seed_window_half_width)
+        & (xs_new >= seed_window_half_width)
+        & (xs_new < w_r - seed_window_half_width)
+    )
+    ys_new = ys_new[valid_new]
+    xs_new = xs_new[valid_new]
 
-        # ---------------- coarse search ---------------------------------
-        best_dist2 = np.inf
-        best_pt = None  # (x_old_r, y_old_r, region_idx)
-        ys_old, xs_old = np.nonzero(lag_mask)
-        for y_old_r, x_old_r in zip(ys_old, xs_old):
-            u_pix = lagrangian_u_pixels_np[y_old_r, x_old_r]
-            v_pix = lagrangian_v_pixels_np[y_old_r, x_old_r]
-            x_map = x_old_r + u_pix / step
-            y_map = y_old_r + v_pix / step
-            d2 = (x_new_r - x_map) ** 2 + (y_new_r - y_map) ** 2
-            if d2 < best_dist2:
-                ridx = lagrangian_ncorr_roi_obj._find_region_containing_point(
-                    x_old_r * step, y_old_r * step
-                )
-                best_dist2 = d2
-                best_pt = (x_old_r, y_old_r, ridx)
+    ys_old, xs_old = np.nonzero(lag_mask)
+    regions_old = [
+        lagrangian_ncorr_roi_obj._find_region_containing_point(x * step, y * step)
+        for y, x in zip(ys_old, xs_old)
+    ]
+    region_arr = np.array([r if r is not None else -1 for r in regions_old], dtype=int)
 
-        if best_pt is None or not isfinite(best_dist2):
-            continue
+    u_old = lagrangian_u_pixels_np[ys_old, xs_old]
+    v_old = lagrangian_v_pixels_np[ys_old, xs_old]
+    x_map = xs_old + u_old / step
+    y_map = ys_old + v_old / step
 
-        x_old_r, y_old_r, region_idx = best_pt
-        if region_idx is None:
+    if xs_new.size == 0 or xs_old.size == 0:
+        return convert_seed_info
+
+    dx = xs_new[:, None] - x_map[None, :]
+    dy = ys_new[:, None] - y_map[None, :]
+    dist2 = dx * dx + dy * dy
+    best_indices = np.argmin(dist2, axis=1)
+    best_dists2 = dist2[np.arange(dist2.shape[0]), best_indices]
+
+    for x_new_r, y_new_r, best_idx, best_dist2 in zip(
+        xs_new, ys_new, best_indices, best_dists2
+    ):
+        if not isfinite(best_dist2):
             continue
+        region_idx = region_arr[best_idx]
+        if region_idx == -1:
+            continue
+        x_old_r = xs_old[best_idx]
+        y_old_r = ys_old[best_idx]
 
         # ---------------- Gauss–Newton refinement -----------------------
         x_old_f, y_old_f = float(x_old_r), float(y_old_r)
@@ -164,12 +190,25 @@ def _determine_convert_seeds_py(
 
         # Interpolate final U,V for acceptance
         try:
-            u_fin = _ccore.interp_qbs(
-                x_old_f, y_old_f, u_bcoef, mask_cpp, off_x, off_y, border_interp_cpp
-            )[0]
-            v_fin = _ccore.interp_qbs(
-                x_old_f, y_old_f, v_bcoef, mask_cpp, off_x, off_y, border_interp_cpp
-            )[0]
+            with CPP_LOCK:
+                u_fin = _ccore.interp_qbs(
+                    x_old_f,
+                    y_old_f,
+                    u_bcoef,
+                    mask_cpp,
+                    off_x,
+                    off_y,
+                    border_interp_cpp,
+                )[0]
+                v_fin = _ccore.interp_qbs(
+                    x_old_f,
+                    y_old_f,
+                    v_bcoef,
+                    mask_cpp,
+                    off_x,
+                    off_y,
+                    border_interp_cpp,
+                )[0]
         except RuntimeError:
             continue
 
@@ -205,4 +244,14 @@ def _determine_convert_seeds_py(
             )
 
     return convert_seed_info
+
+
+def format_displacement_fields(*_args, **_kwargs):
+    """Placeholder for displacement formatting."""
+    raise NotImplementedError
+
+
+def calculate_strain_fields(*_args, **_kwargs):
+    """Placeholder for strain calculation."""
+    raise NotImplementedError
 

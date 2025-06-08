@@ -13,7 +13,10 @@ from typing import Any
 
 from . import utils
 
-_ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+try:
+    _ccore = _imp_mod("ncorr_app._ext._ncorr_cpp_core")
+except ModuleNotFoundError:  # pragma: no cover - optional C++ extension
+    _ccore = None
 
 
 __all__ = ["NcorrImage"]
@@ -147,6 +150,9 @@ class NcorrImage:
         """
         Return a **CppNcorrClassImg** instance populated from this object.
         """
+        if _ccore is None:
+            raise RuntimeError("C++ core module not available")
+
         cpp_img = _ccore.CppNcorrClassImg()
         cpp_img.type = self.type
         cpp_img.max_gs = self.max_gs
